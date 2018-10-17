@@ -15,6 +15,7 @@ nodeIsValidator: true
 
 networkPassphrase: Public Global Stellar Network ; September 2015
 
+catchupCompleteBeforeStart: false
 catchupComplete: false
 catchupRecent: 0
 

@@ -58,3 +58,93 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 {{- end -}}
 {{- end -}}
 {{- end -}}
+
+{{- define "stellar-core.env" -}}
+{{- with .Values.existingNodeSeedSecret }}
+- name: NODE_SEED
+  valueFrom:
+    secretKeyRef:
+      name: {{ required "name of existingNodeSeedSecret is required" .name | quote }}
+      key: {{ required "key of existingNodeSeedSecret is required" .key | quote }}
+{{- else }}
+- name: NODE_SEED
+  valueFrom:
+    secretKeyRef:
+      name: {{ template "stellar-core.fullname" . }}
+      key: nodeSeed
+{{- end }}
+{{- if .Values.postgresql.enabled }}
+- name: DATABASE_PASSWORD
+  valueFrom:
+    secretKeyRef:
+      name: {{ template "stellar-core.postgresql.fullname" . }}
+      key: postgres-password
+- name: DATABASE
+  value: postgresql://dbname={{ .Values.postgresql.postgresDatabase }} user={{ .Values.postgresql.postgresUser }} password=$(DATABASE_PASSWORD) host={{ template "stellar-core.postgresql.fullname" . }} connect_timeout={{ .Values.postgresqlConnectTimeout }}
+{{- else }}
+{{- with .Values.existingDatabase.passwordSecret }}
+- name: DATABASE_PASSWORD
+  valueFrom:
+    secretKeyRef:
+      name: {{ .name | quote }}
+      key: {{ .key | quote }}
+{{- end }}
+- name: DATABASE
+  value: {{ .Values.existingDatabase.url }}
+{{- end }}
+{{- with .Values.knownPeers }}
+- name: KNOWN_PEERS
+  value: "{{ join "," .}}"
+{{- end }}
+{{- with .Values.preferredPeers }}
+- name: PREFERRED_PEERS
+  value: "{{ join "," .}}"
+{{- end }}
+{{- with .Values.nodeNames }}
+- name: NODE_NAMES
+  value: "{{range $index, $element := . }}{{ if gt $index 0 }},{{ end }}{{ $element.publicKey }} {{ $element.name }}{{ end }}"
+{{- end }}
+{{- with .Values.quorumSet }}
+- name: QUORUM_SET
+  value: {{ . | toJson | quote }}
+{{- end }}
+{{- with .Values.history }}
+- name: HISTORY
+  value: {{ . | toJson | quote }}
+{{- end }}
+{{- with .Values.initializeHistoryArchives }}
+- name: INITIALIZE_HISTORY_ARCHIVES
+  value: {{ . | quote }}
+{{- end }}
+{{- if .Values.gcloudServiceAccountKey }}
+- name: GCLOUD_SERVICE_ACCOUNT_KEY
+  valueFrom:
+    secretKeyRef:
+      name: {{ template "stellar-core.fullname" . }}
+      key: gcloudServiceAccountKey
+{{- end }}
+{{- with .Values.nodeIsValidator }}
+- name: NODE_IS_VALIDATOR
+  value: {{ . | quote }}
+{{- end }}
+{{- with .Values.networkPassphrase }}
+- name: NETWORK_PASSPHRASE
+  value: {{ . | quote }}
+{{- end }}
+{{- with .Values.catchupComplete }}
+- name: CATCHUP_COMPLETE
+  value: {{ . | quote }}
+{{- end }}
+{{- with .Values.catchupRecent }}
+- name: CATCHUP_RECENT
+  value: {{ . | quote }}
+{{- end }}
+{{- with .Values.maxPeerConnections }}
+- name: MAX_PEER_CONNECTIONS
+  value: {{ . | quote }}
+{{- end }}
+{{- range $key, $val := .Values.environment }}
+- name: {{ $key }}
+  value: {{ $val | quote }}
+{{- end }}
+{{- end -}}
